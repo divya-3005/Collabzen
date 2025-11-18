@@ -21,7 +21,7 @@ export default function Home() {
         localStorage.removeItem("token");
         navigate("/login");
       });
-  }, [navigate]);
+  }, [API_URL,navigate]);
 
   return (
     <div className="home-wrapper">
