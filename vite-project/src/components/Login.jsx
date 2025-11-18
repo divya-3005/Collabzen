@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
+import "./Login.css";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -12,37 +13,37 @@ export default function Login() {
     try {
       const res = await axios.post("http://localhost:8080/login", { email, password });
       localStorage.setItem("token", res.data.token);
-      alert("Login Successful!");
-      console.log("Navigating to home...");
-      navigate("/home"); // ✅ FIXED: Ensures navigation works
+      navigate("/home");
     } catch (err) {
       alert(err.response?.data?.error || "Login failed");
     }
   };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gray-100">
-      <form onSubmit={handleLogin} className="bg-white p-8 rounded-2xl shadow-md w-80">
-        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+    <div className="auth-container">
+      <form onSubmit={handleLogin} className="auth-card">
+        <h2 className="auth-title">Login</h2>
+
         <input
           type="email"
           placeholder="Email"
-          className="w-full mb-4 p-2 border rounded"
+          className="auth-input"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
+
         <input
           type="password"
           placeholder="Password"
-          className="w-full mb-4 p-2 border rounded"
+          className="auth-input"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <button type="submit" className="bg-blue-600 text-white w-full py-2 rounded">
-          Login
-        </button>
-        <p className="mt-3 text-center text-sm">
-          Don’t have an account? <Link to="/signup" className="text-blue-600">Signup</Link>
+
+        <button type="submit" className="auth-btn">Login</button>
+
+        <p className="auth-footer">
+          Don’t have an account? <Link to="/signup" className="auth-link">Signup</Link>
         </p>
       </form>
     </div>
