@@ -7,11 +7,12 @@ export default function Signup() {
   const [form, setForm] = useState({ username: "", email: "", password: "" });
   const navigate = useNavigate();
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
   const handleSignup = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:8080/signup", form);
+      await axios.post(`${API_URL}/signup`, form);
       navigate("/login");
     } catch (err) {
       alert(err.response?.data?.error || "Signup failed");
