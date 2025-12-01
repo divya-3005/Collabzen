@@ -5,11 +5,12 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { PrismaClient } = require("@prisma/client");
+const prisma = require("./db");
 
-const prisma = new PrismaClient();
 app.use(bodyParser.json());
 app.use(cors());
+const authenticateToken = require("./middleware/authenticateToken");
+
 
 const port = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || "mysecret";
@@ -49,22 +50,41 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// Auth middleware
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-  if (!token) return res.sendStatus(401);
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
-    next();
-  });
-}
 
 // Protected route
 app.get("/me", authenticateToken, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
   res.json(user);
 });
+
+const projectsRouter = require("./Routes/projects");
+const tasksRouter = require("./Routes/tasks");
+
+app.use("/projects", projectsRouter);
+app.use("/tasks", tasksRouter);
+
+// Analytics route
+app.get("/analytics/overview", require("./middleware/authenticateToken"), async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const totalProjects = await prisma.project.count({
+      where: { ownerId: userId },
+    });
+
+    const totalTasks = await prisma.task.count({
+      where: { project: { ownerId: userId } },
+    });
+
+    const completedTasks = await prisma.task.count({
+      where: { project: { ownerId: userId }, status: "done" },
+    });
+
+    res.json({ totalProjects, totalTasks, completedTasks });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 app.listen(port, () => console.log(`Server running on port ${port}`));

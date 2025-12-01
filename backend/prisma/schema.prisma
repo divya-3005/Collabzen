@@ -4,20 +4,62 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Connection URLs are no longer supported in schema files.
+  // Move connection URLs for Migrate to prisma.config.ts and configure the PrismaClient
+  // (pass `adapter` for a direct DB connection or `accelerateUrl` for Accelerate).
+  // See: https://pris.ly/d/config-datasource and https://pris.ly/d/prisma7-client-config
 }
 
 model User {
-  id       Int      @id @default(autoincrement())
-  username String
-  email    String   @unique
-  password String
+  id        Int      @id @default(autoincrement())
+  username  String
+  email     String   @unique
+  password  String
   createdAt DateTime @default(now())
+
+  // Relations
+  ownedProjects Project[] @relation("UserOwnedProjects")
+  assignedTasks Task[]    @relation("UserAssignedTasks")
+}
+
+// -------------------------
+// PROJECT MODEL
+// -------------------------
+model Project {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+
+  // Foreign Key
+  ownerId Int
+  owner   User @relation("UserOwnedProjects", fields: [ownerId], references: [id])
+
+  // Tasks in this project
+  tasks Task[]
+}
+
+// -------------------------
+// TASK MODEL
+// -------------------------
+model Task {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  status      String   @default("todo") // todo | in-progress | done
+  createdAt   DateTime @default(now())
+
+  // Project relation
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id])
+
+  // Assigned user
+  assignedTo Int?
+  assignee   User? @relation("UserAssignedTasks", fields: [assignedTo], references: [id])
 }
