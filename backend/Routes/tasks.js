@@ -1,103 +1,136 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const prisma = require("../db");
-const authenticateToken = require("../middleware/authenticateToken");
+const Task = require('../Models/Task');
+const Project = require('../Models/Project');
+const authenticateToken = require('../middleware/authenticateToken');
 
-// CREATE task
-router.post("/", authenticateToken, async (req, res) => {
+router.use(authenticateToken);
+
+// Create Task
+router.post('/', async (req, res) => {
   try {
-    const { title, description, projectId } = req.body;
+    const { title, description, status, priority, deadline, projectId } = req.body;
+    
+    // Verify project ownership
+    const project = await Project.findOne({ _id: projectId, owner: req.user.userId });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
 
-    const project = await prisma.project.findUnique({
-      where: { id: Number(projectId) }
-    });
+    const taskData = {
+      title,
+      description,
+      status,
+      priority,
+      deadline,
+      project: projectId,
+      assignedTo: req.body.assignedTo || req.user.userId
+    };
 
-    if (!project) return res.status(404).json({ error: "Project not found" });
-    if (project.ownerId !== req.user.userId) return res.status(403).json({ error: "Forbidden" });
+    // If assignedTo is explicitly empty string (from frontend select), default to current user or null
+    if (req.body.assignedTo === "") {
+        taskData.assignedTo = req.user.userId;
+    }
 
-    const task = await prisma.task.create({
-      data: {
-        title,
-        description,
-        projectId: Number(projectId),
-      },
-    });
-
+    const task = await Task.create(taskData);
     res.status(201).json(task);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 
-// GET tasks for a project
-router.get("/project/:projectId", authenticateToken, async (req, res) => {
+// Get Tasks (Search, Sort, Filter, Pagination)
+router.get('/', async (req, res) => {
   try {
-    const projectId = Number(req.params.projectId);
+    const { page = 1, limit = 10, search, sort, projectId, status, priority } = req.query;
+    
+    // Base query: find tasks where the project belongs to the user
+    // First find all user projects
+    const userProjects = await Project.find({ owner: req.user.userId }).select('_id');
+    const userProjectIds = userProjects.map(p => p._id);
 
-    const project = await prisma.project.findUnique({
-      where: { id: projectId }
+    const query = { project: { $in: userProjectIds } };
+
+    if (projectId) {
+        // Ensure the requested projectId is one of the user's projects
+        if (userProjectIds.some(id => id.toString() === projectId)) {
+            query.project = projectId;
+        } else {
+            return res.json({ tasks: [], totalPages: 0, currentPage: page });
+        }
+    }
+
+    if (search) query.title = { $regex: search, $options: 'i' };
+    if (status) query.status = status;
+    if (priority) query.priority = priority;
+
+    let sortOption = { createdAt: -1 };
+    if (sort) {
+        if (sort === 'deadline') sortOption = { deadline: 1 };
+        else if (sort === 'priority') sortOption = { priority: -1 }; 
+        else if (sort === 'createdAt') sortOption = { createdAt: -1 };
+    }
+
+    const tasks = await Task.find(query)
+      .sort(sortOption)
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .populate('project', 'name');
+
+    const total = await Task.countDocuments(query);
+
+    res.json({
+      tasks,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page
     });
-
-    if (!project) return res.status(404).json({ error: "Project not found" });
-    if (project.ownerId !== req.user.userId) return res.status(403).json({ error: "Forbidden" });
-
-    const tasks = await prisma.task.findMany({
-      where: { projectId },
-      orderBy: { createdAt: "desc" }
-    });
-
-    res.json(tasks);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// UPDATE task
-router.patch("/:id", authenticateToken, async (req, res) => {
+// Get Single Task
+router.get('/:id', async (req, res) => {
   try {
-    const id = Number(req.params.id);
-    const { title, description, status } = req.body;
+    const task = await Task.findById(req.params.id).populate('project');
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    
+    // Verify ownership via project
+    const project = await Project.findOne({ _id: task.project._id, owner: req.user.userId });
+    if (!project) return res.status(403).json({ error: 'Access denied' });
 
-    const task = await prisma.task.findUnique({ where: { id } });
-    if (!task) return res.status(404).json({ error: "Task not found" });
-
-    const project = await prisma.project.findUnique({
-      where: { id: task.projectId }
-    });
-
-    if (project.ownerId !== req.user.userId) return res.status(403).json({ error: "Forbidden" });
-
-    const updated = await prisma.task.update({
-      where: { id },
-      data: {
-        title: title ?? task.title,
-        description: description ?? task.description,
-        status: status ?? task.status,
-      },
-    });
-
-    res.json(updated);
+    res.json(task);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// DELETE task
-router.delete("/:id", authenticateToken, async (req, res) => {
+// Update Task
+router.put('/:id', async (req, res) => {
   try {
-    const id = Number(req.params.id);
+    // First verify ownership
+    const task = await Task.findById(req.params.id).populate('project');
+    if (!task) return res.status(404).json({ error: 'Task not found' });
 
-    const task = await prisma.task.findUnique({ where: { id } });
-    if (!task) return res.status(404).json({ error: "Task not found" });
+    const project = await Project.findOne({ _id: task.project._id, owner: req.user.userId });
+    if (!project) return res.status(403).json({ error: 'Access denied' });
 
-    const project = await prisma.project.findUnique({
-      where: { id: task.projectId }
-    });
+    const updatedTask = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updatedTask);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
-    if (project.ownerId !== req.user.userId) return res.status(403).json({ error: "Forbidden" });
+// Delete Task
+router.delete('/:id', async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id).populate('project');
+    if (!task) return res.status(404).json({ error: 'Task not found' });
 
-    await prisma.task.delete({ where: { id } });
-    res.json({ message: "Task deleted" });
+    const project = await Project.findOne({ _id: task.project._id, owner: req.user.userId });
+    if (!project) return res.status(403).json({ error: 'Access denied' });
+
+    await Task.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Task deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

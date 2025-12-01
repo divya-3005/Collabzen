@@ -1,71 +1,92 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const prisma = require("../db");
-const authenticateToken = require("../middleware/authenticateToken");
+const Project = require('../Models/Project');
+const authenticateToken = require('../middleware/authenticateToken');
 
-// GET all projects
-router.get("/", authenticateToken, async (req, res) => {
-  try {
-    const projects = await prisma.project.findMany({
-      where: { ownerId: req.user.userId },
-      include: { tasks: true },
-      orderBy: { createdAt: "desc" },
-    });
-    res.json(projects);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// Middleware to ensure authentication
+router.use(authenticateToken);
 
-// CREATE project
-router.post("/", authenticateToken, async (req, res) => {
+// Create Project
+router.post('/', async (req, res) => {
   try {
-    const { title, description } = req.body;
-    const project = await prisma.project.create({
-      data: {
-        title,
-        description,
-        ownerId: req.user.userId,
-      },
+    const { name, description } = req.body;
+    const project = await Project.create({
+      name,
+      description,
+      owner: req.user.userId
     });
     res.status(201).json(project);
   } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Get All Projects (with pagination, search, sort)
+router.get('/', async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search, sort } = req.query;
+    const query = { owner: req.user.userId };
+
+    if (search) {
+      query.name = { $regex: search, $options: 'i' };
+    }
+
+    let sortOption = { createdAt: -1 };
+    if (sort) {
+        // format: field:asc or field:desc
+        const [field, order] = sort.split(':');
+        sortOption = { [field]: order === 'desc' ? -1 : 1 };
+    }
+
+    const projects = await Project.find(query)
+      .sort(sortOption)
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Project.countDocuments(query);
+
+    res.json({
+      projects,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page
+    });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET single project
-router.get("/:id", authenticateToken, async (req, res) => {
+// Get Single Project
+router.get('/:id', async (req, res) => {
   try {
-    const id = Number(req.params.id);
-
-    const project = await prisma.project.findUnique({
-      where: { id },
-      include: { tasks: true },
-    });
-
-    if (!project) return res.status(404).json({ error: "Not found" });
-    if (project.ownerId !== req.user.userId) return res.status(403).json({ error: "Forbidden" });
-
+    const project = await Project.findOne({ _id: req.params.id, owner: req.user.userId });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
     res.json(project);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// DELETE project
-router.delete("/:id", authenticateToken, async (req, res) => {
+// Update Project
+router.put('/:id', async (req, res) => {
   try {
-    const id = Number(req.params.id);
+    const project = await Project.findOneAndUpdate(
+      { _id: req.params.id, owner: req.user.userId },
+      req.body,
+      { new: true }
+    );
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    res.json(project);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
-    const project = await prisma.project.findUnique({ where: { id } });
-    if (!project) return res.status(404).json({ error: "Not found" });
-    if (project.ownerId !== req.user.userId) return res.status(403).json({ error: "Forbidden" });
-
-    await prisma.task.deleteMany({ where: { projectId: id } });
-    await prisma.project.delete({ where: { id } });
-
-    res.json({ message: "Project deleted" });
+// Delete Project
+router.delete('/:id', async (req, res) => {
+  try {
+    const project = await Project.findOneAndDelete({ _id: req.params.id, owner: req.user.userId });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    res.json({ message: 'Project deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

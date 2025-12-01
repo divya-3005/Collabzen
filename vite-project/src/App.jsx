@@ -1,21 +1,41 @@
-import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Login from "./components/Login";
-import Signup from "./components/Signup";
-import Home from "./components/Home";
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Dashboard from './pages/Dashboard';
+import ProjectDetails from './pages/ProjectDetails';
+
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return <div>Loading...</div>;
+  if (!user) return <Navigate to="/login" />;
+  return children;
+};
 
 function App() {
-  const token = localStorage.getItem("token");
-
   return (
-    <BrowserRouter>
+    <AuthProvider>
       <Routes>
-        <Route path="/" element={<Navigate to={token ? "/home" : "/login"} />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/home" element={token ? <Home /> : <Navigate to="/login" />} />
+        <Route 
+          path="/" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/project/:id" 
+          element={
+            <ProtectedRoute>
+              <ProjectDetails />
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
-    </BrowserRouter>
+    </AuthProvider>
   );
 }
 
