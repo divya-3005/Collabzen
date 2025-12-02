@@ -55,10 +55,26 @@ router.get('/', async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
+    // Calculate progress for each project
+    const projectsWithProgress = await Promise.all(projects.map(async (project) => {
+        const totalTasks = await Task.countDocuments({ project: project._id });
+        const completedTasks = await Task.countDocuments({ project: project._id, status: 'completed' });
+        const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+        
+        return {
+            ...project.toObject(),
+            stats: {
+                totalTasks,
+                completedTasks,
+                progress
+            }
+        };
+    }));
+
     const total = await Project.countDocuments(query);
 
     res.json({
-      projects,
+      projects: projectsWithProgress,
       totalPages: Math.ceil(total / limit),
       currentPage: page
     });

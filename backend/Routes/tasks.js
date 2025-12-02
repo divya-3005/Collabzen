@@ -54,6 +54,16 @@ router.post('/', async (req, res) => {
     }
 
     const task = await Task.create(taskData);
+    
+    // Log Activity
+    const Activity = require('../Models/Activity');
+    await Activity.create({
+        text: `created task "${task.title}"`,
+        user: req.user.userId,
+        project: projectId,
+        type: 'task_created'
+    });
+
     res.status(201).json(task);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -159,6 +169,18 @@ router.put('/:id', async (req, res) => {
     if (!project && !isAssigned) return res.status(403).json({ error: 'Access denied' });
 
     const updatedTask = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    
+    // Log Activity if completed
+    if (req.body.status === 'completed' && task.status !== 'completed') {
+        const Activity = require('../Models/Activity');
+        await Activity.create({
+            text: `completed task "${updatedTask.title}"`,
+            user: req.user.userId,
+            project: task.project._id,
+            type: 'task_completed'
+        });
+    }
+
     res.json(updatedTask);
   } catch (err) {
     res.status(400).json({ error: err.message });

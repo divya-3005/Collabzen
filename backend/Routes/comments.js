@@ -15,6 +15,20 @@ router.post('/', async (req, res) => {
       user: req.user.userId
     });
     const populatedComment = await comment.populate('user', 'username');
+    
+    // Log Activity
+    const Task = require('../Models/Task');
+    const Activity = require('../Models/Activity');
+    const task = await Task.findById(taskId);
+    if (task) {
+        await Activity.create({
+            text: `commented on task "${task.title}"`,
+            user: req.user.userId,
+            project: task.project,
+            type: 'comment_added'
+        });
+    }
+
     res.status(201).json(populatedComment);
   } catch (err) {
     res.status(400).json({ error: err.message });

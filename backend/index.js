@@ -68,6 +68,7 @@ app.use("/projects", projectsRouter);
 app.use("/tasks", tasksRouter);
 app.use("/comments", commentsRouter);
 app.use("/users", usersRouter);
+app.use("/activities", require("./Routes/activities"));
 
 // Analytics route
 app.get("/analytics/overview", authenticateToken, async (req, res) => {

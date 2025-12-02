@@ -4,6 +4,7 @@ import { getAnalytics } from '../api/analytics';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Loader from '../components/Loader';
+import ActivityFeed from '../components/ActivityFeed';
 
 const Dashboard = () => {
   const [projects, setProjects] = useState([]);
@@ -73,13 +74,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h2 style={{ margin: 0 }}>Your Projects</h2>
-        <button onClick={() => setShowCreate(true)} className="btn btn-primary">
-          + New Project
-        </button>
-      </div>
-
       {showCreate && (
         <div className="modal-overlay" onClick={() => setShowCreate(false)}>
           <div className="glass modal" onClick={e => e.stopPropagation()}>
@@ -108,29 +102,66 @@ const Dashboard = () => {
         </div>
       )}
 
-      <div className="project-grid">
-        {projects.map(project => (
-          <Link to={`/project/${project._id}`} key={project._id} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <div className="glass project-card">
-              <div className="project-header">
-                <h3 className="project-title">{project.name}</h3>
-              </div>
-              <p className="project-desc">{project.description || 'No description provided.'}</p>
-              <div className="project-footer">
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  {new Date(project.createdAt).toLocaleDateString()}
-                </span>
-                <button
-                  onClick={(e) => handleDelete(e, project._id)}
-                  className="btn btn-danger"
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                >
-                  Delete
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem', alignItems: 'start' }}>
+        <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <h2 style={{ margin: 0 }}>Your Projects</h2>
+                <button onClick={() => setShowCreate(true)} className="btn btn-primary">
+                + New Project
                 </button>
-              </div>
             </div>
-          </Link>
-        ))}
+
+            <div className="project-grid">
+                {projects.map(project => (
+                <Link to={`/project/${project._id}`} key={project._id} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <div className="glass project-card">
+                    <div className="project-header">
+                        <h3 className="project-title">{project.name}</h3>
+                    </div>
+                    <p className="project-desc">{project.description || 'No description provided.'}</p>
+                    
+                    {project.stats && (
+                        <div style={{ marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
+                            <span>Progress</span>
+                            <span>{project.stats.progress}%</span>
+                        </div>
+                        <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{ 
+                            width: `${project.stats.progress}%`, 
+                            height: '100%', 
+                            background: 'linear-gradient(90deg, var(--primary), var(--secondary))',
+                            borderRadius: '3px',
+                            transition: 'width 0.5s ease-out'
+                            }} />
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                            {project.stats.completedTasks} / {project.stats.totalTasks} tasks completed
+                        </div>
+                        </div>
+                    )}
+
+                    <div className="project-footer">
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {new Date(project.createdAt).toLocaleDateString()}
+                        </span>
+                        <button
+                        onClick={(e) => handleDelete(e, project._id)}
+                        className="btn btn-danger"
+                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                        >
+                        Delete
+                        </button>
+                    </div>
+                    </div>
+                </Link>
+                ))}
+            </div>
+        </div>
+        
+        <div style={{ position: 'sticky', top: '100px' }}>
+            <ActivityFeed />
+        </div>
       </div>
     </div>
   );
