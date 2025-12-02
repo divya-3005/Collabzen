@@ -59,33 +59,15 @@ app.post("/login", async (req, res) => {
 });
 
 
-// Protected route
-app.get("/me", authenticateToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.userId).select("-password");
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get all users (for assignment)
-app.get("/users", authenticateToken, async (req, res) => {
-  try {
-    const users = await User.find().select("username email _id");
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 const projectsRouter = require("./Routes/projects");
 const tasksRouter = require("./Routes/tasks");
 const commentsRouter = require("./Routes/comments");
+const usersRouter = require("./Routes/users");
 
 app.use("/projects", projectsRouter);
 app.use("/tasks", tasksRouter);
 app.use("/comments", commentsRouter);
+app.use("/users", usersRouter);
 
 // Analytics route
 app.get("/analytics/overview", authenticateToken, async (req, res) => {

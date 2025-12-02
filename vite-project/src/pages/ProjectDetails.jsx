@@ -53,6 +53,12 @@ const ProjectDetails = () => {
         fetchData();
     }, [id, filter]);
 
+    useEffect(() => {
+        if (project) {
+            document.title = `${project.name} | CollabZen`;
+        }
+    }, [project]);
+
     const handleCreate = async (e) => {
         e.preventDefault();
         try {

@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
             const token = localStorage.getItem('token');
             if (token) {
                 try {
-                    const res = await api.get('/me');
+                    const res = await api.get('/users/me');
                     setUser(res.data);
                 } catch (err) {
                     localStorage.removeItem('token');
@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         const res = await api.post('/login', { email, password });
         localStorage.setItem('token', res.data.token);
-        const userRes = await api.get('/me');
+        const userRes = await api.get('/users/me');
         setUser(userRes.data);
     };
 

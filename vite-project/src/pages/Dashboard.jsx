@@ -28,6 +28,7 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
+    document.title = 'Dashboard | CollabZen';
     fetchData();
   }, []);
 
@@ -56,7 +57,7 @@ const Dashboard = () => {
   return (
     <div className="container">
       <Navbar />
-      
+
       <div className="stats-grid">
         <div className="glass stat-card">
           <span className="stat-value">{stats.totalProjects}</span>
@@ -84,19 +85,19 @@ const Dashboard = () => {
           <div className="glass modal" onClick={e => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>Create New Project</h3>
             <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <input 
-                type="text" 
-                placeholder="Project Name" 
-                value={newProject.name} 
-                onChange={(e) => setNewProject({...newProject, name: e.target.value})} 
-                required 
+              <input
+                type="text"
+                placeholder="Project Name"
+                value={newProject.name}
+                onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+                required
                 autoFocus
               />
-              <textarea 
-                placeholder="Description" 
-                value={newProject.description} 
-                onChange={(e) => setNewProject({...newProject, description: e.target.value})}
-                rows="4" 
+              <textarea
+                placeholder="Description"
+                value={newProject.description}
+                onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
+                rows="4"
               />
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                 <button type="button" onClick={() => setShowCreate(false)} className="btn btn-secondary">Cancel</button>
@@ -119,8 +120,8 @@ const Dashboard = () => {
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   {new Date(project.createdAt).toLocaleDateString()}
                 </span>
-                <button 
-                  onClick={(e) => handleDelete(e, project._id)} 
+                <button
+                  onClick={(e) => handleDelete(e, project._id)}
                   className="btn btn-danger"
                   style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
                 >

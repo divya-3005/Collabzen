@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -9,6 +9,10 @@ const Signup = () => {
   const { signup } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    document.title = 'Sign Up | CollabZen';
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

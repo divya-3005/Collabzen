@@ -25,7 +25,19 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 10, search, sort } = req.query;
-    const query = { owner: req.user.userId };
+    
+    // Find projects owned by user OR projects where user has assigned tasks
+    // 1. Get all tasks assigned to user
+    const Task = require('../Models/Task');
+    const assignedTasks = await Task.find({ assignedTo: req.user.userId }).select('project');
+    const assignedProjectIds = assignedTasks.map(t => t.project);
+
+    const query = {
+      $or: [
+        { owner: req.user.userId },
+        { _id: { $in: assignedProjectIds } }
+      ]
+    };
 
     if (search) {
       query.name = { $regex: search, $options: 'i' };
@@ -58,7 +70,16 @@ router.get('/', async (req, res) => {
 // Get Single Project
 router.get('/:id', async (req, res) => {
   try {
-    const project = await Project.findOne({ _id: req.params.id, owner: req.user.userId });
+    // Check if owner OR has assigned tasks in this project
+    const Task = require('../Models/Task');
+    const hasAssignedTasks = await Task.exists({ project: req.params.id, assignedTo: req.user.userId });
+    
+    const query = { _id: req.params.id };
+    if (!hasAssignedTasks) {
+        query.owner = req.user.userId;
+    }
+    
+    const project = await Project.findOne(query);
     if (!project) return res.status(404).json({ error: 'Project not found' });
     res.json(project);
   } catch (err) {
